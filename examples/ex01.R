@@ -15,3 +15,9 @@ print(gg0 + geom_smooth(method="loess")
           + geom_smooth(method="lm", col="red"))
 
 cdat <- mutate(cdat, f_age=cut_number(age,3))
+
+gg1 <- (ggplot(cdat, aes(weight, carbohydrate, colour=f_age))
+    + geom_point(aes(shape=f_age), size=4)        
+)
+
+print(gg1)
