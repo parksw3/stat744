@@ -106,8 +106,8 @@ gg_uk <- ggplot(london_synchrony, aes(lon, lat)) +
     geom_segment(data=london_line, aes(xend=target.lon, yend=target.lat, col=synchrony), 
                  alpha=0.4, lwd=1.5, lty=2) +
     geom_point(aes(size=total, col=synchrony), alpha=0.9) +
-    geom_text(data=london_line, aes(x=target.lon, y=target.lat, label=loc), vjust=2.8) +
-    geom_text(x=-0.105, y=51.517, label="LONDON", vjust=3.7) +
+    geom_text(data=london_line, aes(x=target.lon, y=target.lat, label=loc), vjust=2.9) +
+    geom_text(x=-0.105, y=51.517, label="LONDON", vjust=3.9) +
     ggtitle("Synchrony with London") +
     scale_size_continuous(range=c(3,20), guide=FALSE) +
     scale_color_gradient(low="#56B4E9", high="#D55E00") +
@@ -117,7 +117,7 @@ gg_uk <- ggplot(london_synchrony, aes(lon, lat)) +
         axis.text = element_blank(),
         axis.ticks = element_blank(),
         axis.title = element_blank(),
-        legend.position = c(0.9, 0.8),
+        legend.position = c(0.9, 0.85),
         plot.title = element_text(hjust = 0.5)
     )
 
@@ -127,7 +127,7 @@ gg_incidence <- ggplot(filter(transdf, loc %in% c(london_minmax)), aes(time, cas
     geom_text(data=london_line, aes(label=loc), x=1944.3, y=log10(6500), hjust=0) +
     ggtitle("Biweekly incidence") +
     scale_y_log10() +
-    scale_x_continuous("year", expand=c(0,0)) +
+    scale_x_continuous("year", expand=c(0,0), breaks=c(1945, 1950,1955, 1960)) +
     scale_color_discrete(value=c("#D55E00", "#56B4E9")) +
     facet_grid(loc~., scale="free") +
     theme(
@@ -137,8 +137,34 @@ gg_incidence <- ggplot(filter(transdf, loc %in% c(london_minmax)), aes(time, cas
         plot.title = element_text(hjust = 0.5)
     )
 
+esyncdf <- syncdf %>%
+    filter(country=="UK") %>%
+    do(data.frame(
+        loc=.$loc,
+        country=.$country,
+        normalized=unlist(.$normalized)
+    )) %>%
+    group_by(loc) %>%
+    bind_cols(data.frame(time=transdf %>% filter(loc=="LONDON") %>% select(time) %>% unlist %>% rep(40))) %>%
+    group_by()
 
-gg_london <- arrangeGrob(gg_uk, gg_incidence, nrow=1, widths=c(0.4, 0.6))
+gg_normal <- ggplot(filter(esyncdf, loc %in% c(london_minmax)), aes(time, normalized)) +
+    geom_line(data=filter(esyncdf, loc=="LONDON") %>% select(-loc), lty=2) +
+    geom_line(aes(col=loc)) +
+    geom_text(data=london_line, aes(label=loc), x=1944.3, y=2.5, hjust=0) +
+    ggtitle("Detrended and normalized incidence") +
+    scale_x_continuous("year", expand=c(0,0), breaks=c(1945, 1950,1955, 1960)) +
+    scale_y_continuous("Normallized residuals") +
+    scale_color_discrete(value=c("#D55E00", "#56B4E9")) +
+    facet_grid(loc~.) +
+    theme(
+        strip.background = element_blank(),
+        strip.text = element_blank(),
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5, margin=margin(b = 8.5, unit = "pt"))
+    )
 
-ggsave("HW1_fig1.pdf", gg_london, width=10, height=6)
+gg_london <- arrangeGrob(gg_uk, gg_incidence, gg_normal, nrow=1, widths=c(0.4, 0.6, 0.6))
+
+if (save) ggsave("HW1_fig1.pdf", gg_london, width=16, height=6)
 
