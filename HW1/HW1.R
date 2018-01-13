@@ -1,61 +1,69 @@
 library(tidyverse)
-library(ggplot2)
+library(ggplot2); theme_set(theme_bw())
 library(lme4)
 library(tsiR)
+library(geosphere)
+library(emdbook)
 
 ## http://datadryad.org/resource/doi:10.5061/dryad.r4q34
 
 df <- read.csv("../data/measlesUKUS.csv")
 
-cdf <- df %>% mutate(cases=ifelse(is.na(cases), 0, cases)) %>%
+transdf <- df %>% mutate(cases=ifelse(is.na(cases), 0, cases)) %>%
+    rename(births=rec, time=decimalYear)
+
+sumdf <- transdf %>%
     group_by(loc, country) %>%
-    mutate(ccase=cumsum(cases), crec=cumsum(rec))
+    summarize(total=sum(cases))
 
-rho_model <- cdf %>%
-    group_by(loc, country) %>%
-    do(data.frame(
-        loc=.$loc,
-        country=.$country,
-        year=.$year,
-        decimalYear=.$decimalYear,
-        X=.$crec,
-        Yhat=predict(loess(ccase~crec, data=., 
-                           se=T, family='gaussian', degree=1, model=T))
-    ))
+syncdf <- transdf %>%
+    group_by(loc, country, lon, lat) %>%
+    do(normalized={
+            r <- residuals(loess(log(cases+1)~time, data=.))
+            (r-mean(r))/sd(r)
+        }
+    ) %>%
+    left_join(sumdf)
 
-rho <- rho_model %>%
-    mutate(rho=derivative(X, Yhat))
+city <- levels(syncdf$loc)
+reslist <- vector('list', length(city)*(length(city)-1)/2)
+for(i in 1:length(city)) {
+    for(j in i:length(city)) {
+        df1 <- syncdf %>% filter(loc==city[i])
+        df2 <- syncdf %>% filter(loc==city[j])
+        if ((df1$country==df2$country) && (i != j)) {
+            reslist[[(i-1)*length(city)+j]] <- data.frame(
+                country=df1$country,
+                city1=city[i],
+                city2=city[j],
+                dist=distm(c(df1$lon, df1$lat), c(df2$lon, df2$lat), fun=distGeo),
+                total=df1$total+df2$total,
+                synchrony=sum(unlist(df1$normalized)*unlist(df2$normalized)),
+                ccf=cor(unlist(df1$normalized), unlist(df2$normalized))
+            )
+            
+        }
+    }
+}
 
-mean_rho <- rho %>%
-    group_by(loc, country, year) %>%
-    summarize(mean.rho=mean(rho))
+synchrony <- reslist %>% 
+    bind_rows
 
-ggplot(mean_rho, aes(year, mean.rho, col=country)) +
-    geom_point(alpha=0.15) +
-    geom_smooth(method="gam", se=FALSE, lwd=1.2) +
-    scale_y_continuous("reporting rate", expand=c(0,0)) +
-    scale_x_continuous(expand=c(0,0)) +
+gg_synchrony <- ggplot(synchrony, aes(dist/1000, synchrony, col=country)) +
+    geom_point(aes(shape=country), alpha=0.5) +
+    geom_smooth(method="loess", se=FALSE, lwd=1.2) +
+    scale_y_continuous("Synchrony measure") + 
+    scale_x_log10("Distance between cities (km)") +
+    scale_shape_manual(values=c(1, 2)) +
     theme(
-        legend.position = c(0.1, 0.9),
-        panel.grid = element_blank()
+        strip.background = element_blank(),
+        legend.position=c(0.1, 0.85)
     )
 
-tdf <- merge(cdf, rho) %>%
-    mutate(true.cases=cases/rho,
-           Z=residual.births(rho, Yhat, ccase)) %>%
-    group_by(country, loc) %>%
-    do(data.frame(
-        biweek=head(.$biweek,-1),
-        Inew=log(tail(.$true.cases,-1)+1),
-        Iminus=log(head(.$true.cases,-1)+1),
-        Sminus=log(head(0.035*.$pop+.$Z,-1))
-    ))
+ggsave("HW1_fig1.pdf", gg_synchrony, width=6, height=4)
 
-fit <- lmer(Inew~ -1 + as.factor(biweek) + Iminus + offset(Sminus)
-            + country + (as.factor(biweek)|loc), 
-            data=tdf)
 
-coef(fit)
+
 
 
 
