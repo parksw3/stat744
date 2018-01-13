@@ -69,7 +69,7 @@ gg_synchrony <- ggplot(synchrony, aes(dist/1000, synchrony, col=country)) +
         legend.position=c(0.1, 0.85)
     )
 
-if (save) ggsave("HW1_fig1.pdf", gg_synchrony, width=6, height=4)
+if (save) ggsave("HW1_fig2.pdf", gg_synchrony, width=6, height=4)
 
 uk <- map_data(map = "world", region = "UK") %>%
     filter(!(subregion %in% c("Northern Ireland", "Scotland")), lat < 55.3)
@@ -101,13 +101,14 @@ london_line <- london_synchrony %>%
     rename(target.lon=lon, target.lat=lat) %>%
     mutate(lon=-0.105, lat=51.517)
 
-ggplot(london_synchrony, aes(lon, lat)) +
+gg_uk <- ggplot(london_synchrony, aes(lon, lat)) +
     geom_polygon(data = uk, aes(x=long, y = lat, group = group), alpha=0.2) + 
     geom_segment(data=london_line, aes(xend=target.lon, yend=target.lat, col=synchrony), 
                  alpha=0.4, lwd=1.5, lty=2) +
     geom_point(aes(size=total, col=synchrony), alpha=0.9) +
     geom_text(data=london_line, aes(x=target.lon, y=target.lat, label=loc), vjust=2.8) +
     geom_text(x=-0.105, y=51.517, label="LONDON", vjust=3.7) +
+    ggtitle("Synchrony with London") +
     scale_size_continuous(range=c(3,20), guide=FALSE) +
     scale_color_gradient(low="#56B4E9", high="#D55E00") +
     theme(
@@ -116,19 +117,28 @@ ggplot(london_synchrony, aes(lon, lat)) +
         axis.text = element_blank(),
         axis.ticks = element_blank(),
         axis.title = element_blank(),
-        legend.position = c(0.9, 0.8)
+        legend.position = c(0.9, 0.8),
+        plot.title = element_text(hjust = 0.5)
     )
 
-ggplot(filter(transdf, loc %in% c(london_minmax)), aes(time, cases)) +
+gg_incidence <- ggplot(filter(transdf, loc %in% c(london_minmax)), aes(time, cases)) +
     geom_line(data=filter(transdf, loc=="LONDON") %>% select(-loc), lty=2) +
     geom_line(aes(col=loc)) +
+    geom_text(data=london_line, aes(label=loc), x=1944.3, y=log10(6500), hjust=0) +
+    ggtitle("Biweekly incidence") +
     scale_y_log10() +
-    facet_grid(loc~., scale="free")
+    scale_x_continuous("year", expand=c(0,0)) +
+    scale_color_discrete(value=c("#D55E00", "#56B4E9")) +
+    facet_grid(loc~., scale="free") +
+    theme(
+        strip.background = element_blank(),
+        strip.text = element_blank(),
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5)
+    )
 
 
+gg_london <- arrangeGrob(gg_uk, gg_incidence, nrow=1, widths=c(0.4, 0.6))
 
-
-
-
-
+ggsave("HW1_fig1.pdf", gg_london, width=10, height=6)
 
