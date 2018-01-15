@@ -40,7 +40,7 @@ for(i in 1:length(city)) {
     for(j in i:length(city)) {
         df1 <- syncdf %>% filter(loc==city[i])
         df2 <- syncdf %>% filter(loc==city[j])
-        if ((df1$country==df2$country) && (i != j)) {
+        if ((df1$country==df2$country)) {
             reslist[[(i-1)*length(city)+j]] <- data.frame(
                 country=df1$country,
                 city1=city[i],
@@ -56,7 +56,8 @@ for(i in 1:length(city)) {
 }
 
 synchrony <- reslist %>% 
-    bind_rows
+    bind_rows %>% 
+    filter(city1 != city2)
 
 gg_synchrony <- ggplot(synchrony, aes(dist/1000, synchrony, col=country)) +
     geom_point(aes(shape=country), alpha=0.5) +
@@ -128,7 +129,7 @@ gg_incidence <- ggplot(filter(transdf, loc %in% c(london_minmax)), aes(time, cas
     ggtitle("Biweekly incidence") +
     scale_y_log10() +
     scale_x_continuous("year", expand=c(0,0), breaks=c(1945, 1950,1955, 1960)) +
-    scale_color_discrete(value=c("#D55E00", "#56B4E9")) +
+    scale_color_manual(values=c("#D55E00", "#56B4E9")) +
     facet_grid(loc~., scale="free") +
     theme(
         strip.background = element_blank(),
@@ -155,7 +156,7 @@ gg_normal <- ggplot(filter(esyncdf, loc %in% c(london_minmax)), aes(time, normal
     ggtitle("Detrended and normalized incidence") +
     scale_x_continuous("year", expand=c(0,0), breaks=c(1945, 1950,1955, 1960)) +
     scale_y_continuous("Normallized residuals") +
-    scale_color_discrete(value=c("#D55E00", "#56B4E9")) +
+    scale_color_manual(values=c("#D55E00", "#56B4E9")) +
     facet_grid(loc~.) +
     theme(
         strip.background = element_blank(),
@@ -167,5 +168,19 @@ gg_normal <- ggplot(filter(esyncdf, loc %in% c(london_minmax)), aes(time, normal
 gg_london <- arrangeGrob(gg_uk, gg_incidence, gg_normal, nrow=1, widths=c(0.4, 0.6, 0.6))
 
 if (save) ggsave("HW1_fig1.pdf", gg_london, width=16, height=6)
+
+syncvec <- reslist %>%
+    lapply(function(x) ifelse(is.null(x), NA, x$synchrony)) %>%
+    unlist
+
+nc <- length(city)
+
+m1 <- matrix(syncvec, nc, nc)
+m2 <- matrix(syncvec, nc, nc, byrow=TRUE)
+    
+syncmat <- m1
+syncmat[is.na(m1)] <- m2[is.na(syncmat)]
+
+
 
 
