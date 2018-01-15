@@ -15,7 +15,7 @@ scale_colour_discrete <- function(...,palette="Dark2") scale_colour_brewer(...,p
 scale_fill_discrete <- function(...,palette="Dark2") scale_fill_brewer(...,palette=palette)
 
 ## http://datadryad.org/resource/doi:10.5061/dryad.r4q34
-df <- read.csv("../data/measlesUKUS.csv")
+df <- read.csv("data/measlesUKUS.csv")
 
 transdf <- df %>% mutate(cases=ifelse(is.na(cases), 0, cases)) %>%
     rename(births=rec, time=decimalYear) %>%
@@ -167,4 +167,5 @@ gg_normal <- ggplot(filter(esyncdf, loc %in% c(london_minmax)), aes(time, normal
 gg_london <- arrangeGrob(gg_uk, gg_incidence, gg_normal, nrow=1, widths=c(0.4, 0.6, 0.6))
 
 if (save) ggsave("HW1_fig1.pdf", gg_london, width=16, height=6)
+
 
