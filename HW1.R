@@ -29,7 +29,7 @@ sumdf <- transdf %>%
 syncdf <- transdf %>%
     group_by(loc, country, lon, lat) %>%
     do(normalized={
-            r <- residuals(loess(log(cases+1)~time, data=.))
+            r <- residuals(loess(cases~time, data=.))
             (r-mean(r))/sd(r)
         }
     ) %>%
@@ -93,8 +93,8 @@ london_minmax <- london_synchrony %>%
     group_by %>%
     filter(loc != "LONDON") %>%
     summarize(
-        min=.[which.min(ccf),][["loc"]],
-        max=.[which.max(ccf),][["loc"]]
+        min=.[which.min(synchrony),][["loc"]],
+        max=.[which.max(synchrony),][["loc"]]
     ) %>%
     unlist
 
@@ -126,9 +126,8 @@ gg_uk <- ggplot(london_synchrony, aes(lon, lat)) +
 gg_incidence <- ggplot(filter(transdf, loc %in% c(london_minmax)), aes(time, cases)) +
     geom_line(data=filter(transdf, loc=="LONDON") %>% select(-loc), lty=2) +
     geom_line(aes(col=loc)) +
-    geom_text(data=london_line, aes(label=loc), x=1944.3, y=log10(6500), hjust=0) +
+    geom_text(data=london_line, aes(label=loc), x=1944.3, y=6500, hjust=0) +
     ggtitle("Biweekly incidence") +
-    scale_y_log10() +
     scale_x_continuous("year", expand=c(0,0), breaks=c(1945, 1950,1955, 1960)) +
     scale_color_manual(values=c("#D55E00", "#56B4E9")) +
     facet_grid(loc~., scale="free") +
@@ -153,7 +152,7 @@ esyncdf <- syncdf %>%
 gg_normal <- ggplot(filter(esyncdf, loc %in% c(london_minmax)), aes(time, normalized)) +
     geom_line(data=filter(esyncdf, loc=="LONDON") %>% select(-loc), lty=2) +
     geom_line(aes(col=loc)) +
-    geom_text(data=london_line, aes(label=loc), x=1944.3, y=2.5, hjust=0) +
+    geom_text(data=london_line, aes(label=loc), x=1944.3, y=6, hjust=0) +
     ggtitle("Detrended and normalized incidence") +
     scale_x_continuous("year", expand=c(0,0), breaks=c(1945, 1950,1955, 1960)) +
     scale_y_continuous("Normallized residuals") +
