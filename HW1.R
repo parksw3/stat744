@@ -4,6 +4,7 @@ library(ggplot2); theme_set(theme_bw(base_size = 12,
 library(geosphere)
 library(ggmap)
 library(gridExtra)
+library(ade4)
 
 if (.Platform$OS.type=="windows") {
     windowsFonts(Times=windowsFont("Times"))
@@ -168,19 +169,3 @@ gg_normal <- ggplot(filter(esyncdf, loc %in% c(london_minmax)), aes(time, normal
 gg_london <- arrangeGrob(gg_uk, gg_incidence, gg_normal, nrow=1, widths=c(0.4, 0.6, 0.6))
 
 if (save) ggsave("HW1_fig1.pdf", gg_london, width=16, height=6)
-
-syncvec <- reslist %>%
-    lapply(function(x) ifelse(is.null(x), NA, x$synchrony)) %>%
-    unlist
-
-nc <- length(city)
-
-m1 <- matrix(syncvec, nc, nc)
-m2 <- matrix(syncvec, nc, nc, byrow=TRUE)
-    
-syncmat <- m1
-syncmat[is.na(m1)] <- m2[is.na(syncmat)]
-
-
-
-
