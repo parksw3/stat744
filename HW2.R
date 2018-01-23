@@ -43,5 +43,5 @@ g1 <- ggplot(data3, aes(as.numeric(cv), mc, group=disease, col=disease)) +
 gt1 <- ggplotGrob(g1)
 gt1$layout$clip[gt1$layout$name == "panel"] <- "off"
 
-ggsave("HW2_fig2.pdf", gt1, width=8, height=6)
+ggsave("HW2_fig1.pdf", gt1, width=8, height=6)
 
