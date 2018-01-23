@@ -18,9 +18,12 @@ scale_fill_discrete <- function(...,palette="Dark2") scale_fill_brewer(...,palet
 ## http://datadryad.org/resource/doi:10.5061/dryad.r4q34
 df <- read.csv("data/measlesUKUS.csv")
 
-transdf <- df %>% mutate(cases=ifelse(is.na(cases), 0, cases)) %>%
+transdf <- df %>% 
+    mutate(cases=ifelse(is.na(cases), 0, cases)) %>%
     rename(births=rec, time=decimalYear) %>%
-    filter(loc != "READING.US")
+    filter(loc != "READING.US") %>%
+    group_by(loc, year, country, lon, lat) %>%
+    summarize(cases=sum(cases))
 
 sumdf <- transdf %>%
     group_by(loc, country, lon, lat) %>%
@@ -29,7 +32,7 @@ sumdf <- transdf %>%
 syncdf <- transdf %>%
     group_by(loc, country, lon, lat) %>%
     do(normalized={
-            r <- residuals(loess(cases~time, data=.))
+            r <- residuals(loess(cases~year, data=.))
             (r-mean(r))/sd(r)
         }
     ) %>%
@@ -123,12 +126,13 @@ gg_uk <- ggplot(london_synchrony, aes(lon, lat)) +
         plot.title = element_text(hjust = 0.5)
     )
 
-gg_incidence <- ggplot(filter(transdf, loc %in% c(london_minmax)), aes(time, cases)) +
-    geom_line(data=filter(transdf, loc=="LONDON") %>% select(-loc), lty=2) +
+gg_incidence <- ggplot(filter(transdf, loc %in% c(london_minmax)), aes(year, cases)) +
+    geom_line(data=filter(transdf, loc=="LONDON") %>% group_by %>% select(-loc), lty=2) +
     geom_line(aes(col=loc)) +
     geom_text(data=london_line, aes(label=loc), x=1944.3, y=6500, hjust=0) +
-    ggtitle("Biweekly incidence") +
+    ggtitle("Yearly incidence") +
     scale_x_continuous("year", expand=c(0,0), breaks=c(1945, 1950,1955, 1960)) +
+    scale_y_log10() +
     scale_color_manual(values=c("#D55E00", "#56B4E9")) +
     facet_grid(loc~., scale="free") +
     theme(
@@ -146,10 +150,10 @@ esyncdf <- syncdf %>%
         normalized=unlist(.$normalized)
     )) %>%
     group_by(loc) %>%
-    bind_cols(data.frame(time=transdf %>% filter(loc=="LONDON") %>% select(time) %>% unlist %>% rep(40))) %>%
+    bind_cols(data.frame(year=transdf %>% filter(loc=="LONDON") %>% group_by %>% select(year) %>% unlist %>% rep(40))) %>%
     group_by()
 
-gg_normal <- ggplot(filter(esyncdf, loc %in% c(london_minmax)), aes(time, normalized)) +
+gg_normal <- ggplot(filter(esyncdf, loc %in% c(london_minmax)), aes(year, normalized)) +
     geom_line(data=filter(esyncdf, loc=="LONDON") %>% select(-loc), lty=2) +
     geom_line(aes(col=loc)) +
     geom_text(data=london_line, aes(label=loc), x=1944.3, y=6, hjust=0) +
