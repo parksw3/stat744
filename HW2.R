@@ -12,17 +12,19 @@ if (.Platform$OS.type=="windows") {
 scale_colour_discrete <- function(...,palette="Dark2") scale_colour_brewer(...,palette=palette)
 scale_fill_discrete <- function(...,palette="Dark2") scale_fill_brewer(...,palette=palette)
 
+save <- FALSE
+
 data <- readr::read_csv("https://bbolker.github.io/stat744/data/vaccine_data_online.csv")
 
 data2 <- data %>%
+    filter(disease != "Mumps") %>%
     mutate(vaccine=ifelse(is.na(as.logical(vaccine)), TRUE, FALSE)) %>%
     group_by(disease) %>%
     mutate(cv=factor(cumsum(vaccine)))
 
 data3 <- data2 %>%
     group_by(disease, cv) %>%
-    summarize(mc=mean(cases)) %>%
-    filter(disease != "Mumps")
+    summarize(mc=mean(cases)) 
 
 g1 <- ggplot(data3, aes(as.numeric(cv), mc, group=disease, col=disease)) +
     geom_point() +
@@ -43,5 +45,26 @@ g1 <- ggplot(data3, aes(as.numeric(cv), mc, group=disease, col=disease)) +
 gt1 <- ggplotGrob(g1)
 gt1$layout$clip[gt1$layout$name == "panel"] <- "off"
 
-ggsave("HW2_fig1.pdf", gt1, width=8, height=6)
+if (save) ggsave("HW2_fig1.pdf", gt1, width=8, height=6)
+
+data_time <- data2 %>% 
+    filter(vaccine != FALSE) %>%
+    mutate(cv=as.factor(as.numeric(as.character(cv))-1)) %>%
+    bind_rows(data2)
+
+g2 <- ggplot(data_time, aes(year, cases)) +
+    geom_line(aes(lty=cv)) +
+    geom_point(data=data2 %>% filter(vaccine != FALSE)) +
+    geom_dl(data=data2 %>% filter(vaccine != FALSE), aes(label=year), method=list(dl.trans(x= x + .3, y = y - .4), "first.bumpup")) +
+    scale_y_log10(expand=c(0.1, 0.1)) +
+    scale_linetype_manual(values=c(2, 1, 1)) +
+    facet_grid(disease~., scale="free_y") +
+    theme(
+        legend.position = "none",
+        strip.background = element_blank(),
+        panel.spacing = unit(0, units="cm")
+    )
+
+if (save) ggsave("HW2_fig2.pdf", g2, width=6, height=8)
+
 
